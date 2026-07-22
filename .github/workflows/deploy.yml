@@ -54,7 +54,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
           port: ${{ secrets.FTP_PORT || '21' }}
-          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
+          server-dir: ${{ secrets.FTP_REMOTE_DIR || './' }}
           local-dir: ./
           # .env, Runtime-Daten und Entwickler-Kram werden NICHT übertragen.
           exclude: |

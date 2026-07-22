@@ -1,0 +1,13 @@
+# Subdomain-Docroot zeigt auf das App-Wurzelverzeichnis (Shared-Hosting „Fall B").
+# Alle Anfragen werden intern nach /public umgeleitet, damit Laravel korrekt aus
+# public/ ausgeliefert wird und die übrigen App-Dateien nicht direkt erreichbar sind.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Defense-in-depth: sensible Dateien niemals direkt ausliefern.
+<FilesMatch "^(\.env.*|composer\.(json|lock)|package(-lock)?\.json|artisan)$">
+    Require all denied
+</FilesMatch>
