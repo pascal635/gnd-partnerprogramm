@@ -29,4 +29,10 @@ return [
     // Token for the protected deploy route (FTP hosting without SSH).
     // Empty => the route is disabled (404).
     'deploy_token' => env('DEPLOY_TOKEN'),
+
+    // Initial admin user created by the deploy route (first login in production).
+    'admin' => [
+        'email' => env('ADMIN_EMAIL'),
+        'password' => env('ADMIN_PASSWORD'),
+    ],
 ];
