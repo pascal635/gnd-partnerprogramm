@@ -19,7 +19,7 @@ jobs:
       - name: PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: intl, bcmath, mbstring, pdo_mysql, zip, gd, curl, dom, fileinfo
           coverage: none
 
