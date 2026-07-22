@@ -57,7 +57,7 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; set net:max-retries 5; set net:timeout 30; set net:reconnect-interval-base 5; set mirror:parallel-transfer-count 3; mirror -R --ignore-time --parallel=3 --exclude node_modules/ --exclude tests/ --exclude docs/ --exclude [.]github/ --exclude [.]git --exclude [.]env\$ --exclude storage/logs/ --exclude storage/framework/cache/ --exclude storage/framework/sessions/ --exclude storage/framework/views/ ./ . ; bye"
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; set net:max-retries 5; set net:timeout 30; set net:reconnect-interval-base 5; set mirror:parallel-transfer-count 3; mirror -R --ignore-time --parallel=3 --exclude node_modules/ --exclude tests/ --exclude docs/ --exclude [.]github/ --exclude [.]git --exclude [.]env\$ ./ . ; bye"
 
       # Ohne SSH: Migrationen + Cache über die geschützte Deploy-Route auslösen.
       - name: Migrationen & Cache auf dem Server auslösen

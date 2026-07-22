@@ -31,6 +31,20 @@ class DeployController extends Controller
         // 0) Schreibrechte sicherstellen (FTP-Upload setzt oft zu enge Rechte,
         //    Blade/Cache/Logs brauchen aber schreibbares storage + bootstrap/cache).
         try {
+            // Fehlende Standard-Verzeichnisse anlegen (falls im Upload nicht vorhanden).
+            foreach ([
+                storage_path('framework/cache/data'),
+                storage_path('framework/sessions'),
+                storage_path('framework/views'),
+                storage_path('logs'),
+                storage_path('app/public'),
+                base_path('bootstrap/cache'),
+            ] as $needed) {
+                if (! is_dir($needed)) {
+                    @mkdir($needed, 0775, true);
+                }
+            }
+
             foreach (['storage', 'bootstrap/cache'] as $dir) {
                 $base = base_path($dir);
                 if (! is_dir($base)) {
