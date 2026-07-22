@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: PHP 8.3
+      - name: PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -36,11 +36,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
 
       - name: Frontend-Assets bauen
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
 
       - name: Filament-Assets veröffentlichen
