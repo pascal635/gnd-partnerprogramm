@@ -1,0 +1,87 @@
+name: Deploy (FTP)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ftp-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, bcmath, mbstring, pdo_mysql, zip, gd, curl, dom, fileinfo
+          coverage: none
+
+      - name: Composer install (ohne dev)
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+
+      # Nur damit artisan im Build läuft – diese .env wird NICHT hochgeladen.
+      - name: .env für den Build
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Frontend-Assets bauen
+        run: |
+          npm ci
+          npm run build
+
+      - name: Filament-Assets veröffentlichen
+        run: php artisan filament:assets
+
+      - name: FTP-Upload
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
+          port: ${{ secrets.FTP_PORT || '21' }}
+          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
+          local-dir: ./
+          # .env, Runtime-Daten und Entwickler-Kram werden NICHT übertragen.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            node_modules/**
+            tests/**
+            docs/**
+            **/*.md
+            .env
+            .env.local
+            storage/logs/**
+            storage/framework/cache/**
+            storage/framework/sessions/**
+            storage/framework/views/**
+            storage/app/**
+
+      # Ohne SSH: Migrationen + Cache über die geschützte Deploy-Route auslösen.
+      - name: Migrationen & Cache auf dem Server auslösen
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -n "$DEPLOY_URL" ] && [ -n "$DEPLOY_TOKEN" ]; then
+            echo "Rufe Deploy-Hook auf …"
+            curl -fsS "$DEPLOY_URL/gnd-deploy/$DEPLOY_TOKEN" && echo "" || echo "Deploy-Hook fehlgeschlagen – bitte URL einmal manuell im Browser aufrufen."
+          else
+            echo "DEPLOY_URL/DEPLOY_TOKEN nicht gesetzt – Migrationen bitte manuell über die Deploy-URL auslösen."
+          fi
