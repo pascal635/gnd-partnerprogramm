@@ -28,6 +28,28 @@ class DeployController extends Controller
 
         $result = [];
 
+        // 0) Schreibrechte sicherstellen (FTP-Upload setzt oft zu enge Rechte,
+        //    Blade/Cache/Logs brauchen aber schreibbares storage + bootstrap/cache).
+        try {
+            foreach (['storage', 'bootstrap/cache'] as $dir) {
+                $base = base_path($dir);
+                if (! is_dir($base)) {
+                    continue;
+                }
+                @chmod($base, 0775);
+                $items = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::SELF_FIRST,
+                );
+                foreach ($items as $item) {
+                    @chmod($item->getPathname(), $item->isDir() ? 0775 : 0664);
+                }
+            }
+            $result['permissions'] = 'OK';
+        } catch (Throwable $e) {
+            $result['permissions'] = 'FEHLER: '.$e->getMessage();
+        }
+
         // 1) Schema
         try {
             Artisan::call('migrate', ['--force' => true]);
