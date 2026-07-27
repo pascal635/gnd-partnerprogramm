@@ -96,8 +96,9 @@ class DeployController extends Controller
             $result['admin'] = 'übersprungen (ADMIN_EMAIL/ADMIN_PASSWORD nicht gesetzt)';
         }
 
-        // 4) Caches
-        foreach (['config:cache', 'route:cache', 'view:cache', 'filament:assets', 'storage:link'] as $command) {
+        // 4) Cache leeren (bewusst KEIN config:cache → .env-Änderungen greifen
+        //    sofort; die Clears brauchen keine DB-Verbindung).
+        foreach (['config:clear', 'route:clear', 'view:clear', 'filament:assets', 'storage:link'] as $command) {
             try {
                 Artisan::call($command);
                 $result[$command] = trim(Artisan::output()) ?: 'OK';
