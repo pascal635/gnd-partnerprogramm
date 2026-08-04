@@ -61,6 +61,7 @@ class PerformanceChartWidget extends ChartWidget
                 ->groupBy('d')->pluck('c', 'd'),
             'provision' => Commission::query()
                 ->when($partnerId, fn (Builder $q) => $q->where('commissions.partner_id', $partnerId))
+                ->where('commissions.status', '!=', \App\Enums\CommissionStatus::Cancelled->value)
                 ->join('conversions', 'commissions.conversion_id', '=', 'conversions.id')
                 ->whereBetween('conversions.converted_at', [$from, $until])
                 ->selectRaw('DATE(conversions.converted_at) as d, SUM(commissions.amount) as c')

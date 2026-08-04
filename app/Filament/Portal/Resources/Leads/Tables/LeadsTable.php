@@ -34,15 +34,12 @@ class LeadsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge(),
+                // Provisionsvolumen pro Empfehlung – bewusst OHNE
+                // Auszahlungs-/Freigabestatus (Portal zeigt nur das Volumen).
                 TextColumn::make('provision')
                     ->label('Provision')
                     ->state(fn (Lead $record) => $record->conversion?->commission?->amount)
                     ->money('EUR', locale: 'de')
-                    ->placeholder('—'),
-                TextColumn::make('provision_status')
-                    ->label('Provisionsstatus')
-                    ->badge()
-                    ->state(fn (Lead $record) => $record->conversion?->commission?->status)
                     ->placeholder('—'),
             ])
             ->defaultSort('submitted_at', 'desc')
