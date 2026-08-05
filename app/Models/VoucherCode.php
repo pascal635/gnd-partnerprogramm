@@ -49,6 +49,14 @@ class VoucherCode extends Model
         ]);
     }
 
+    /** Human-readable discount for e-mails/UI, e.g. "10 %" or "50 €". */
+    public function discountLabel(): string
+    {
+        $wert = rtrim(rtrim(number_format((float) $this->value, 2, '.', ''), '0'), '.');
+
+        return $this->type === VoucherType::Prozent ? "{$wert} %" : "{$wert} €";
+    }
+
     /** @return BelongsTo<Partner, $this> */
     public function partner(): BelongsTo
     {

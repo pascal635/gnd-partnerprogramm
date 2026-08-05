@@ -24,6 +24,14 @@ class Partner extends Model
         ];
     }
 
+    /** First name derived from the contact person ("Max Mustermann" -> "Max"). */
+    public function firstName(): string
+    {
+        $name = trim((string) $this->contact_person);
+
+        return $name === '' ? '' : explode(' ', $name)[0];
+    }
+
     /** @return HasMany<User, $this> */
     public function users(): HasMany
     {
