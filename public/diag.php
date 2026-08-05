@@ -2,8 +2,7 @@
 
 /**
  * Standalone-Diagnose (token-geschützt). Aufruf: /diag.php?token=<DEPLOY_TOKEN>.
- * Zeigt Umgebung, DB-Verbindung, Mail-/WP-Konfiguration (Passwort maskiert),
- * einfache Erreichbarkeitstests und die letzten Log-Zeilen.
+ * Optional: &mailtest=1 sendet eine Test-Mail und zeigt den exakten SMTP-Fehler.
  * NACH der Fehlersuche wieder entfernen (per FTP löschen).
  */
 $envPath = __DIR__.'/../.env';
@@ -27,76 +26,76 @@ header('Content-Type: text/plain; charset=utf-8');
 
 $mask = static function (?string $v): string {
     $v = (string) $v;
-    if ($v === '') {
-        return '(leer)';
-    }
 
-    return 'gesetzt, Länge '.strlen($v).', beginnt mit "'.substr($v, 0, 2).'…"';
+    return $v === '' ? '(leer)' : 'gesetzt, Länge '.strlen($v);
 };
 
-echo 'PHP-Version: '.PHP_VERSION."\n";
-foreach (['intl', 'pdo_mysql', 'mbstring', 'openssl', 'zip', 'gd', 'curl', 'fileinfo', 'dom'] as $ext) {
-    echo "  ext {$ext}: ".(extension_loaded($ext) ? 'ja' : 'NEIN')."\n";
-}
-echo '.env vorhanden: '.(is_file($envPath) ? 'ja' : 'NEIN')."\n";
+$unwrap = static function (\Throwable $e): string {
+    $msgs = [];
+    $cur = $e;
+    while ($cur) {
+        $msgs[] = get_class($cur).': '.$cur->getMessage();
+        $cur = $cur->getPrevious();
+    }
 
-echo "\n--- Laravel-Boot ---\n";
+    return implode("\n   ⤷ ", $msgs);
+};
+
+echo 'PHP '.PHP_VERSION."   |   .env: ".(is_file($envPath) ? 'ja' : 'NEIN')."\n";
+
+require __DIR__.'/../vendor/autoload.php';
+$app = require __DIR__.'/../bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+echo "Boot OK\n";
+
 try {
-    require __DIR__.'/../vendor/autoload.php';
-    $app = require __DIR__.'/../bootstrap/app.php';
-    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-    echo "Boot OK\n";
-
-    try {
-        DB::connection()->getPdo();
-        echo "DB-Verbindung OK\n";
-    } catch (\Throwable $e) {
-        echo 'DB-FEHLER: '.$e->getMessage()."\n";
-    }
-
-    echo "\n--- Mail-Konfiguration ---\n";
-    $mailer = config('mail.default');
-    echo 'MAIL_MAILER: '.$mailer."\n";
-    $smtp = config('mail.mailers.smtp');
-    $host = $smtp['host'] ?? '';
-    $port = $smtp['port'] ?? '';
-    echo 'Host: '.$host."\n";
-    echo 'Port: '.$port."\n";
-    echo 'Encryption/Scheme: '.(($smtp['encryption'] ?? $smtp['scheme'] ?? '') ?: '(keine)')."\n";
-    echo 'Username: '.($smtp['username'] ?? '(leer)')."\n";
-    echo 'Password: '.$mask($smtp['password'] ?? '')."\n";
-    echo 'From: '.config('mail.from.address').' ('.config('mail.from.name').")\n";
-
-    if ($mailer === 'smtp' && $host && $port) {
-        echo "SMTP erreichbar? ";
-        $errno = 0;
-        $errstr = '';
-        $fp = @fsockopen((str_contains((string) ($smtp['encryption'] ?? ''), 'ssl') ? 'ssl://' : '').$host, (int) $port, $errno, $errstr, 8);
-        if ($fp) {
-            echo "ja (TCP-Verbindung steht)\n";
-            fclose($fp);
-        } else {
-            echo "NEIN – {$errno} {$errstr}\n";
-        }
-    }
-
-    echo "\n--- WordPress-Voucher-Endpunkt ---\n";
-    try {
-        echo 'Endpoint: '.(\App\Support\Secrets::wpVoucherEndpoint() ?: '(nicht konfiguriert)')."\n";
-        echo 'Secret: '.$mask(\App\Support\Secrets::wpSyncSecret())."\n";
-    } catch (\Throwable $e) {
-        echo 'Secrets-FEHLER: '.$e->getMessage()."\n";
-    }
+    DB::connection()->getPdo();
+    echo "DB OK\n";
 } catch (\Throwable $e) {
-    echo 'BOOT-FEHLER: '.get_class($e).': '.$e->getMessage()."\n";
+    echo 'DB-FEHLER: '.$e->getMessage()."\n";
 }
 
-echo "\n--- Letzte Log-Zeilen (storage/logs/laravel.log) ---\n";
+echo "\n--- Mail-Konfiguration ---\n";
+$smtp = config('mail.mailers.smtp');
+echo 'Mailer: '.config('mail.default')."\n";
+echo 'Host: '.($smtp['host'] ?? '').'   Port: '.($smtp['port'] ?? '')."\n";
+echo 'Scheme/Encryption: '.(($smtp['scheme'] ?? $smtp['encryption'] ?? '') ?: '(keine)')."\n";
+echo 'Username: '.($smtp['username'] ?? '(leer)')."\n";
+echo 'Password: '.$mask($smtp['password'] ?? '')."\n";
+echo 'From: '.config('mail.from.address')."\n";
+
+echo "\n--- WordPress-Voucher-Endpunkt ---\n";
+try {
+    echo 'Endpoint: '.(\App\Support\Secrets::wpVoucherEndpoint() ?: '(nicht konfiguriert)')."\n";
+    echo 'Secret: '.$mask(\App\Support\Secrets::wpSyncSecret())."\n";
+} catch (\Throwable $e) {
+    echo 'Secrets-FEHLER: '.$e->getMessage()."\n";
+}
+
+if (($_GET['mailtest'] ?? '') === '1') {
+    echo "\n--- Live-Mailtest ---\n";
+    $to = (string) (config('mail.from.address') ?: $smtp['username'] ?? '');
+    echo "Sende Test an: {$to}\n";
+    try {
+        \Illuminate\Support\Facades\Mail::raw('GND SMTP-Test '.date('H:i:s'), function ($m) use ($to) {
+            $m->to($to)->subject('GND SMTP-Test');
+        });
+        echo "ERGEBNIS: Versand OK (keine Exception)\n";
+    } catch (\Throwable $e) {
+        echo "ERGEBNIS: FEHLER\n   ".$unwrap($e)."\n";
+    }
+}
+
+echo "\n--- Log: nur Fehlermeldungen (letzte 15) ---\n";
 $log = __DIR__.'/../storage/logs/laravel.log';
 if (is_file($log)) {
     $lines = @file($log, FILE_IGNORE_NEW_LINES) ?: [];
-    foreach (array_slice($lines, -60) as $l) {
-        echo $l."\n";
+    $errs = array_values(array_filter($lines, static fn ($l) => str_contains($l, '.ERROR:') || str_contains($l, '.CRITICAL:')));
+    foreach (array_slice($errs, -15) as $l) {
+        echo mb_substr($l, 0, 400)."\n";
+    }
+    if ($errs === []) {
+        echo "(keine ERROR-Zeilen)\n";
     }
 } else {
     echo "(kein Log gefunden)\n";
