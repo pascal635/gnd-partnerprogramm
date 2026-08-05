@@ -26,6 +26,7 @@ class PortalPanelProvider extends PanelProvider
             ->id('portal')
             ->path('portal')
             ->login()
+            ->passwordReset()
             ->brandName('GND Partnerportal')
             ->colors([
                 'primary' => Color::Amber,

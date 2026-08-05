@@ -96,7 +96,8 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            // 7 Tage, damit Partner-Einladungslinks nicht zu schnell ablaufen.
+            'expire' => env('AUTH_PASSWORD_RESET_EXPIRE', 10080),
             'throttle' => 60,
         ],
     ],

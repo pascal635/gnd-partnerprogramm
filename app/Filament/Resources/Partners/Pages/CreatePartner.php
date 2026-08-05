@@ -3,11 +3,10 @@
 namespace App\Filament\Resources\Partners\Pages;
 
 use App\Filament\Resources\Partners\PartnerResource;
-use App\Models\User;
+use App\Support\PartnerInvitation;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Throwable;
 
 class CreatePartner extends CreateRecord
 {
@@ -20,25 +19,21 @@ class CreatePartner extends CreateRecord
             return;
         }
 
-        $user = User::firstOrCreate(
-            ['email' => $this->record->email],
-            [
-                'name' => $this->record->company_name,
-                'partner_id' => $this->record->id,
-                'password' => Hash::make(Str::random(40)),
-                'is_active' => true,
-            ],
-        );
+        try {
+            PartnerInvitation::send($this->record);
 
-        // Ensure link + role even if the user row already existed.
-        $user->forceFill(['partner_id' => $this->record->id])->save();
-        $user->syncRoles('partner');
-
-        // TODO(task #7): send a magic-link invitation email here.
-        Notification::make()
-            ->title('Partner-Login angelegt')
-            ->body("Konto für {$this->record->email} erstellt. Einladung per Magic-Link folgt.")
-            ->success()
-            ->send();
+            Notification::make()
+                ->title('Partner-Login angelegt')
+                ->body("Einladung mit Passwort-Link an {$this->record->email} gesendet.")
+                ->success()
+                ->send();
+        } catch (Throwable $e) {
+            // Login besteht trotzdem – nur der Mailversand hat gehakt.
+            Notification::make()
+                ->title('Partner-Login angelegt')
+                ->body('Konto erstellt, aber die Einladungs-Mail konnte nicht gesendet werden. Bitte E-Mail-Einstellungen prüfen und Einladung erneut senden.')
+                ->warning()
+                ->send();
+        }
     }
 }

@@ -4,15 +4,21 @@ namespace App\Filament\Resources\Partners\Tables;
 
 use App\Enums\PartnerStatus;
 use App\Enums\PartnerType;
+use App\Models\Partner;
+use App\Support\PartnerInvitation;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Throwable;
 
 class PartnersTable
 {
@@ -87,6 +93,43 @@ class PartnersTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                Action::make('invite')
+                    ->label('Einladung senden')
+                    ->icon(Heroicon::OutlinedEnvelope)
+                    ->color('gray')
+                    ->visible(fn (Partner $record): bool => filled($record->email))
+                    ->requiresConfirmation()
+                    ->modalHeading('Einladung ins Partnerportal senden')
+                    ->modalDescription(fn (Partner $record): string => "Einladung mit Passwort-Link an {$record->email} senden? Legt bei Bedarf den Portal-Login an.")
+                    ->action(function (Partner $record): void {
+                        try {
+                            $sent = PartnerInvitation::send($record);
+                        } catch (Throwable $e) {
+                            Notification::make()
+                                ->title('Einladung fehlgeschlagen')
+                                ->body('Die Mail konnte nicht gesendet werden. Bitte E-Mail-Einstellungen prüfen.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        if (! $sent) {
+                            Notification::make()
+                                ->title('Keine E-Mail-Adresse')
+                                ->body('Für diesen Partner ist keine E-Mail hinterlegt.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Einladung gesendet')
+                            ->body("Passwort-Link an {$record->email} verschickt.")
+                            ->success()
+                            ->send();
+                    }),
                 EditAction::make(),
             ])
             ->toolbarActions([
