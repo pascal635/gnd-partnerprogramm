@@ -12,7 +12,9 @@ return [
     'webhooks' => [
         'lead_secret' => env('WP_LEAD_SECRET'),
         'conversion_secret' => env('CONVERSION_SECRET'),
-        'replay_window' => (int) env('WEBHOOK_REPLAY_WINDOW', 300),
+        // Anti-Replay-Fenster in Sekunden (Standard 1 Stunde – gibt beim
+        // Testen genug Luft; per .env WEBHOOK_REPLAY_WINDOW anpassbar).
+        'replay_window' => (int) env('WEBHOOK_REPLAY_WINDOW', 3600),
     ],
 
     // Pipedrive API (deal_value backfill for percentage commissions).
