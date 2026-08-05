@@ -4,6 +4,11 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      full_upload:
+        description: "vendor/ komplett neu hochladen (bei Composer-Problemen)"
+        type: boolean
+        default: false
 
 concurrency:
   group: ftp-deploy
@@ -15,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -48,16 +55,41 @@ jobs:
       - name: lftp installieren
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      # FTPS-Upload via lftp: hält Verschlüsselung UND wiederholt abgebrochene
-      # Übertragungen automatisch (robust bei vielen Dateien / instabilem FTP).
-      # .env und Runtime-Daten werden NICHT übertragen.
-      - name: FTPS-Upload (lftp)
+      # vendor/ (~das Große) nur hochladen, wenn sich composer.lock/json geändert
+      # hat, beim allerersten Deploy, oder manuell erzwungen. Spart bei normalen
+      # Code-Deploys ~10+ Minuten.
+      - name: vendor-Upload nötig?
+        id: deps
+        run: |
+          NEED=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.full_upload }}" = "true" ]; then
+            NEED=true
+          elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            NEED=true
+          elif git diff --name-only HEAD~1 HEAD | grep -qE '(^|/)composer\.(lock|json)$'; then
+            NEED=true
+          fi
+          echo "need=$NEED" >> "$GITHUB_OUTPUT"
+          echo "vendor-Upload: $NEED"
+
+      # App-Code IMMER hochladen (klein, schnell) – ohne vendor/.
+      - name: FTPS-Upload App-Code (ohne vendor)
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; set net:max-retries 5; set net:timeout 30; set net:reconnect-interval-base 5; set mirror:parallel-transfer-count 3; mirror -R --ignore-time --parallel=3 --exclude node_modules/ --exclude tests/ --exclude docs/ --exclude [.]github/ --exclude [.]git --exclude [.]env\$ ./ . ; bye"
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; set net:max-retries 5; set net:timeout 30; set net:reconnect-interval-base 5; set mirror:parallel-transfer-count 3; mirror -R --ignore-time --parallel=3 --exclude vendor/ --exclude node_modules/ --exclude tests/ --exclude docs/ --exclude [.]github/ --exclude [.]git --exclude [.]env\$ ./ . ; bye"
+
+      # vendor/ nur bei Bedarf (Composer-Änderung / manuell / erster Deploy).
+      - name: FTPS-Upload vendor (nur bei Composer-Änderung)
+        if: steps.deps.outputs.need == 'true'
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; set net:max-retries 5; set net:timeout 30; set net:reconnect-interval-base 5; set mirror:parallel-transfer-count 3; mirror -R --ignore-time --parallel=3 ./vendor vendor ; bye"
 
       # Ohne SSH: Migrationen + Cache über die geschützte Deploy-Route auslösen.
       - name: Migrationen & Cache auf dem Server auslösen
