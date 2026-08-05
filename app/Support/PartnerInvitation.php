@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Mail\PartnerInvitationMail;
 use App\Models\Partner;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
@@ -52,10 +53,9 @@ class PartnerInvitation
         }
 
         $token = Password::broker()->createToken($user);
-        $url = route('filament.portal.auth.password-reset.reset', [
-            'email' => $user->email,
-            'token' => $token,
-        ]);
+        // Filaments eigene Methode erzeugt eine korrekt signierte Reset-URL
+        // (die Reset-Seite ist per 'signed'-Middleware geschützt).
+        $url = Filament::getPanel('portal')->getResetPasswordUrl($token, $user);
 
         Mail::to($user->email)->send(
             new PartnerInvitationMail($partner->firstName() ?: $partner->company_name, $url),
