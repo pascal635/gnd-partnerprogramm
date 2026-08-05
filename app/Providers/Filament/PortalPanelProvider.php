@@ -29,7 +29,8 @@ class PortalPanelProvider extends PanelProvider
             ->passwordReset()
             ->brandName('GND Partnerportal')
             ->colors([
-                'primary' => Color::Amber,
+                // GND-CI: gedämpftes Salbeigrün (#50624c) als Markenfarbe.
+                'primary' => Color::hex('#50624c'),
             ])
             ->discoverResources(in: app_path('Filament/Portal/Resources'), for: 'App\Filament\Portal\Resources')
             ->discoverPages(in: app_path('Filament/Portal/Pages'), for: 'App\Filament\Portal\Pages')
