@@ -81,10 +81,23 @@ class VoucherCodesTable
                     ->modalDescription('Den Gutscheincode erneut an WordPress senden?')
                     ->action(function (VoucherCode $record) {
                         $record->update(['sync_status' => SyncStatus::Pending]);
-                        SyncVoucherToWordPress::dispatch($record);
+
+                        try {
+                            SyncVoucherToWordPress::dispatchSync($record);
+                        } catch (\Throwable $e) {
+                            $record->update(['sync_status' => SyncStatus::Failed]);
+                            Notification::make()
+                                ->title('WordPress-Sync fehlgeschlagen')
+                                ->body("Code {$record->code} konnte nicht übertragen werden.")
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         Notification::make()
-                            ->title('Synchronisierung gestartet')
-                            ->body("Code {$record->code} wird erneut an WordPress gesendet.")
+                            ->title('An WordPress gesendet')
+                            ->body("Code {$record->code} wurde erneut übertragen.")
                             ->success()
                             ->send();
                     }),

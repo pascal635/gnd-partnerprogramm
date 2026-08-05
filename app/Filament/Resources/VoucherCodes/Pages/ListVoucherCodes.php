@@ -28,16 +28,25 @@ class ListVoucherCodes extends ListRecords
                 ->modalDescription('Alle aktiven Gutscheincodes werden (erneut) an WordPress gesendet — nützlich, wenn WordPress noch keine Codes hat.')
                 ->action(function (): void {
                     $codes = VoucherCode::query()->where('is_active', true)->get();
+                    $failed = 0;
 
                     foreach ($codes as $code) {
                         $code->update(['sync_status' => SyncStatus::Pending]);
-                        SyncVoucherToWordPress::dispatch($code);
+
+                        try {
+                            SyncVoucherToWordPress::dispatchSync($code);
+                        } catch (\Throwable $e) {
+                            $code->update(['sync_status' => SyncStatus::Failed]);
+                            $failed++;
+                        }
                     }
 
+                    $ok = $codes->count() - $failed;
+
                     Notification::make()
-                        ->title($codes->count().' Code(s) zur Synchronisierung eingereiht')
-                        ->body('Die Übertragung läuft über die Warteschlange (Cron/Worker).')
-                        ->success()
+                        ->title("{$ok} von {$codes->count()} Code(s) an WordPress gesendet")
+                        ->body($failed > 0 ? "{$failed} fehlgeschlagen – bitte einzeln „Erneut senden"." : 'Alle erfolgreich übertragen.')
+                        ->{$failed > 0 ? 'warning' : 'success'}()
                         ->send();
                 }),
             CreateAction::make(),

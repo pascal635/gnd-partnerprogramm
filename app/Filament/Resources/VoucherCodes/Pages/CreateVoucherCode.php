@@ -7,8 +7,10 @@ use App\Filament\Resources\VoucherCodes\Schemas\VoucherCodeForm;
 use App\Filament\Resources\VoucherCodes\VoucherCodeResource;
 use App\Jobs\SyncVoucherToWordPress;
 use App\Mail\PartnerWelcomeMail;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class CreateVoucherCode extends CreateRecord
 {
@@ -25,15 +27,34 @@ class CreateVoucherCode extends CreateRecord
 
     protected function afterCreate(): void
     {
-        SyncVoucherToWordPress::dispatch($this->record);
+        // Direkt (synchron) an WordPress senden – kein Cron nötig. Ein Fehler
+        // bricht das Speichern nicht ab; der Code bleibt als "Sync
+        // fehlgeschlagen" und kann per "Erneut senden" nachgereicht werden.
+        try {
+            SyncVoucherToWordPress::dispatchSync($this->record);
+        } catch (Throwable $e) {
+            $this->record->update(['sync_status' => SyncStatus::Failed->value]);
+            Notification::make()
+                ->title('WordPress-Sync fehlgeschlagen')
+                ->body('Der Code wurde gespeichert, aber nicht an WordPress übertragen. Bitte später „Erneut senden".')
+                ->warning()
+                ->send();
+        }
 
-        // Willkommens-Mail an den Partner (nur bei zugeordnetem Partner mit
-        // E-Mail; Promo-Codes ohne Partner erhalten keine). Queued -> läuft
-        // über die Cron-Queue, blockiert das Speichern nicht.
+        // Willkommens-Mail sofort an den Partner (nur bei zugeordnetem Partner
+        // mit E-Mail; Promo-Codes ohne Partner erhalten keine).
         $partner = $this->record->partner;
 
         if ($partner && filled($partner->email)) {
-            Mail::to($partner->email)->send(new PartnerWelcomeMail($this->record));
+            try {
+                Mail::to($partner->email)->send(new PartnerWelcomeMail($this->record));
+            } catch (Throwable $e) {
+                Notification::make()
+                    ->title('Willkommens-Mail konnte nicht gesendet werden')
+                    ->body('Der Code wurde gespeichert. Bitte die E-Mail-Einstellungen prüfen.')
+                    ->warning()
+                    ->send();
+            }
         }
     }
 }

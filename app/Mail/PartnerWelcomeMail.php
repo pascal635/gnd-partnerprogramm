@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\VoucherCode;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -12,9 +11,9 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Willkommens-Mail an den Partner, sobald ein Gutscheincode angelegt wurde.
- * Wird über die (Cron-)Queue versendet – blockiert die Filament-Aktion nicht.
+ * Wird direkt beim Anlegen versendet (synchron, kein Cron nötig).
  */
-class PartnerWelcomeMail extends Mailable implements ShouldQueue
+class PartnerWelcomeMail extends Mailable
 {
     use Queueable;
     use SerializesModels;

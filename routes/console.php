@@ -8,9 +8,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Shared-Hosting hat keinen Dauer-Worker: die Warteschlange wird per Minuten-Cron
-// (`php artisan schedule:run`) verarbeitet. Verarbeitet u. a. den WordPress-
-// Gutschein-Sync inkl. Retries.
+// Hinweis: WordPress-Sync und Willkommens-Mail laufen synchron beim Speichern –
+// dafür ist KEIN Cron nötig. Dieser Zeitplan ist nur ein optionales Sicherheitsnetz:
+// Wer einen Minuten-Cron (`php artisan schedule:run`) einrichtet, lässt damit ggf.
+// zurückgestellte Queue-Jobs nachlaufen. Ohne Cron passiert hier nichts (unschädlich).
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=8')
     ->everyMinute()
     ->withoutOverlapping();

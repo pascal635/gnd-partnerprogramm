@@ -9,7 +9,9 @@ use App\Jobs\SyncVoucherToWordPress;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Throwable;
 
 class EditVoucherCode extends EditRecord
 {
@@ -34,6 +36,16 @@ class EditVoucherCode extends EditRecord
 
     protected function afterSave(): void
     {
-        SyncVoucherToWordPress::dispatch($this->record);
+        // Direkt (synchron) an WordPress – kein Cron nötig.
+        try {
+            SyncVoucherToWordPress::dispatchSync($this->record);
+        } catch (Throwable $e) {
+            $this->record->update(['sync_status' => SyncStatus::Failed->value]);
+            Notification::make()
+                ->title('WordPress-Sync fehlgeschlagen')
+                ->body('Änderung gespeichert, aber nicht an WordPress übertragen. Bitte „Erneut senden".')
+                ->warning()
+                ->send();
+        }
     }
 }
