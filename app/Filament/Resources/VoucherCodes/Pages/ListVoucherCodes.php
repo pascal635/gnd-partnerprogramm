@@ -43,11 +43,17 @@ class ListVoucherCodes extends ListRecords
 
                     $ok = $codes->count() - $failed;
 
-                    Notification::make()
+                    $notification = Notification::make()
                         ->title("{$ok} von {$codes->count()} Code(s) an WordPress gesendet")
-                        ->body($failed > 0 ? "{$failed} fehlgeschlagen – bitte einzeln „Erneut senden"." : 'Alle erfolgreich übertragen.')
-                        ->{$failed > 0 ? 'warning' : 'success'}()
-                        ->send();
+                        ->body($failed > 0 ? "{$failed} fehlgeschlagen – bitte einzeln erneut senden." : 'Alle erfolgreich übertragen.');
+
+                    if ($failed > 0) {
+                        $notification->warning();
+                    } else {
+                        $notification->success();
+                    }
+
+                    $notification->send();
                 }),
             CreateAction::make(),
         ];
