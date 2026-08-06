@@ -21,15 +21,28 @@ class Partner extends Model
             'partner_type' => PartnerType::class,
             'status' => PartnerStatus::class,
             'iban_encrypted' => 'encrypted',
+            'article_verified_at' => 'datetime',
         ];
     }
 
-    /** First name derived from the contact person ("Max Mustermann" -> "Max"). */
+    /** First name for greetings; falls back to the legacy contact_person. */
     public function firstName(): string
     {
+        if (filled($this->first_name)) {
+            return $this->first_name;
+        }
+
         $name = trim((string) $this->contact_person);
 
         return $name === '' ? '' : explode(' ', $name)[0];
+    }
+
+    /** Full contact name for tables; falls back to legacy field / company. */
+    public function displayName(): string
+    {
+        $name = trim(implode(' ', array_filter([$this->first_name, $this->last_name])));
+
+        return $name !== '' ? $name : (string) ($this->contact_person ?: $this->company_name);
     }
 
     /** @return HasMany<User, $this> */

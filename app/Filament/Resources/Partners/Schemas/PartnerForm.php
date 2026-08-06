@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Partners\Schemas;
 
 use App\Enums\PartnerStatus;
 use App\Enums\PartnerType;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -42,19 +43,31 @@ class PartnerForm
                 Section::make('Ansprechpartner & Login')
                     ->columns(2)
                     ->schema([
-                        TextInput::make('contact_person')
-                            ->label('Ansprechpartner')
+                        Select::make('salutation')
+                            ->label('Anrede')
+                            ->options([
+                                'Herr' => 'Herr',
+                                'Frau' => 'Frau',
+                                'Divers' => 'Divers',
+                            ])
+                            ->native(false),
+                        TextInput::make('phone')
+                            ->label('Telefon')
+                            ->tel()
+                            ->maxLength(64),
+                        TextInput::make('first_name')
+                            ->label('Vorname')
+                            ->maxLength(191),
+                        TextInput::make('last_name')
+                            ->label('Nachname')
                             ->maxLength(191),
                         TextInput::make('email')
                             ->label('E-Mail (Login)')
                             ->email()
                             ->required()
                             ->maxLength(191)
-                            ->helperText('Dient als Login für das Partner-Portal.'),
-                        TextInput::make('phone')
-                            ->label('Telefon')
-                            ->tel()
-                            ->maxLength(64),
+                            ->helperText('Dient als Login für das Partner-Portal.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Adresse')
@@ -66,12 +79,44 @@ class PartnerForm
                         TextInput::make('country')->label('Land')->default('DE')->maxLength(2),
                     ]),
 
+                Section::make('Bankverbindung')
+                    ->description('Für die Auszahlung der Provision.')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('account_holder')
+                            ->label('Kontoinhaber')
+                            ->maxLength(191),
+                        TextInput::make('bic')
+                            ->label('BIC')
+                            ->maxLength(32),
+                        TextInput::make('iban_encrypted')
+                            ->label('IBAN')
+                            ->maxLength(40)
+                            ->helperText('Verschlüsselt gespeichert.')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Fachartikel')
+                    ->description('Link zum vom Partner veröffentlichten Fachartikel.')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('article_url')
+                            ->label('Artikel-Link')
+                            ->url()
+                            ->maxLength(500)
+                            ->columnSpanFull(),
+                        DateTimePicker::make('article_verified_at')
+                            ->label('Geprüft am')
+                            ->native(false)
+                            ->helperText('Setzen, wenn die Veröffentlichung geprüft wurde.'),
+                    ]),
+
                 Section::make('Portal-Zugang')
                     ->visibleOn('create')
                     ->schema([
                         Toggle::make('create_login')
                             ->label('Partner-Login anlegen')
-                            ->helperText('Legt ein Konto für das Partner-Portal an (Einladung per Magic-Link folgt).')
+                            ->helperText('Legt ein Konto für das Partner-Portal an und sendet eine Einladung.')
                             ->default(true)
                             ->dehydrated(false),
                     ]),

@@ -36,7 +36,8 @@ class PartnersTable
                     ->badge(),
                 TextColumn::make('contact_person')
                     ->label('Ansprechpartner')
-                    ->searchable()
+                    ->state(fn (Partner $record): string => $record->displayName())
+                    ->searchable(['first_name', 'last_name', 'contact_person'])
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email')
@@ -80,6 +81,19 @@ class PartnersTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge(),
+                TextColumn::make('article_status')
+                    ->label('Fachartikel')
+                    ->badge()
+                    ->state(fn (Partner $record): string => $record->article_verified_at
+                        ? 'geprüft'
+                        : ($record->article_url ? 'eingereicht' : 'offen'))
+                    ->color(fn (string $state): string => match ($state) {
+                        'geprüft' => 'success',
+                        'eingereicht' => 'warning',
+                        default => 'gray',
+                    })
+                    ->url(fn (Partner $record): ?string => $record->article_url, shouldOpenInNewTab: true)
+                    ->alignCenter(),
                 TextColumn::make('created_at')
                     ->label('Erstellt')
                     ->dateTime('d.m.Y')
