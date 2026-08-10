@@ -9,6 +9,10 @@ enum PartnerType: string implements HasLabel
     case Sachverstaendiger = 'sachverstaendiger';
     case Steuerberater = 'steuerberater';
     case Makler = 'makler';
+    case Finanzierer = 'finanzierer';
+    case Versicherer = 'versicherer';
+    case Influencer = 'influencer';
+    case Hausverwalter = 'hausverwalter';
     case Sonstige = 'sonstige';
 
     public function getLabel(): string
@@ -17,6 +21,10 @@ enum PartnerType: string implements HasLabel
             self::Sachverstaendiger => 'Sachverständiger',
             self::Steuerberater => 'Steuerberater',
             self::Makler => 'Immobilienmakler',
+            self::Finanzierer => 'Finanzierer',
+            self::Versicherer => 'Versicherer',
+            self::Influencer => 'Influencer',
+            self::Hausverwalter => 'Hausverwalter',
             self::Sonstige => 'Sonstige',
         };
     }
