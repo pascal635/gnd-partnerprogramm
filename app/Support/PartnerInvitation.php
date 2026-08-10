@@ -58,7 +58,7 @@ class PartnerInvitation
         $url = Filament::getPanel('portal')->getResetPasswordUrl($token, $user);
 
         Mail::to($user->email)->send(
-            new PartnerInvitationMail($partner->firstName() ?: $partner->company_name, $url),
+            new PartnerInvitationMail($partner->formalGreeting(), $url),
         );
 
         return true;

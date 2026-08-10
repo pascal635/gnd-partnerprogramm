@@ -32,7 +32,7 @@ class PartnerWelcomeMail extends Mailable
         return new Content(
             markdown: 'mail.partner-welcome',
             with: [
-                'firstName' => $this->voucher->partner?->firstName() ?? '',
+                'greeting' => $this->voucher->partner?->formalGreeting() ?? 'Guten Tag',
                 'code' => $this->voucher->code,
                 'discount' => $this->voucher->discountLabel(),
             ],

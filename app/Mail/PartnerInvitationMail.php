@@ -18,7 +18,7 @@ class PartnerInvitationMail extends Mailable
     use SerializesModels;
 
     public function __construct(
-        public string $greetingName,
+        public string $greeting,
         public string $setPasswordUrl,
     ) {}
 
@@ -34,7 +34,7 @@ class PartnerInvitationMail extends Mailable
         return new Content(
             markdown: 'mail.partner-invitation',
             with: [
-                'greetingName' => $this->greetingName,
+                'greeting' => $this->greeting,
                 'url' => $this->setPasswordUrl,
             ],
         );

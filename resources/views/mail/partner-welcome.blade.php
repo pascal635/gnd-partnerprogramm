@@ -1,35 +1,27 @@
 @component('mail::message')
-Hallo{{ $firstName !== '' ? ' '.$firstName : '' }},
+{{ $greeting }},
 
 herzlich willkommen im Partnerprogramm von gutachten-nutzungsdauer.com – wir freuen uns auf die Zusammenarbeit.
 
-Hier die wichtigsten Infos zum Start:
+**Ihr Partnercode: {{ $code }}**
 
-**Dein Partnercode: {{ $code }}**
+Ihre Kontakte erhalten damit **{{ $discount }} Rabatt** auf ihr Gutachten. Der Code gilt zeitlich unbegrenzt und wird jedem Auftrag automatisch zugeordnet.
 
-Hier geht es zum Partnerportal: [partner.gutachten-nutzungsdauer.com](https://partner.gutachten-nutzungsdauer.com/)
-(Eine Einladung zum Portal hast du schon per Mail bekommen.)
+Zum Partnerportal: [partner.gutachten-nutzungsdauer.com](https://partner.gutachten-nutzungsdauer.com/)
+(Eine Einladung zum Portal haben Sie bereits per Mail erhalten.)
 
-**So funktioniert's:**
+**Ihre nächsten Schritte:**
 
-- Deine Kontakte erhalten {{ $discount }} Rabatt auf ihr Gutachten.
-- Der Code kann zeitlich unbegrenzt genutzt werden und wird jedem Auftrag automatisch zugeordnet.
-- Die Landingpage kann hier erreicht werden: [gutachten-nutzungsdauer.com/abschreibung-immobilie](https://gutachten-nutzungsdauer.com/abschreibung-immobilie/)
+1. **Loggen Sie sich im Portal ein** und füllen Sie Ihre **Stammdaten vollständig aus** – inklusive Ihrer **Website-URL** (falls noch nicht hinterlegt).
+2. Prüfen Sie, ob es auf Ihrer Website einen **Blog** gibt.
+    - **Falls ja:** Wir erstellen für Sie **zwei Blogbeiträge** zu den Themen **AfA** und **Restnutzungsdauer-Gutachten**.
+    - Sobald die Beiträge auf Ihrer Website veröffentlicht sind, hinterlegen Sie bitte die **beiden Links** in Ihrem Portal – so können wir alles prüfen.
 
-**Verlinkung auf deiner Seite:**
+Die Landingpage finden Sie hier: [gutachten-nutzungsdauer.com/abschreibung-immobilie](https://gutachten-nutzungsdauer.com/abschreibung-immobilie/)
 
-Wir bieten dir an, gutachten-nutzungsdauer.com auf einer unserer regionalen Partnerseiten zu verlinken – so profitieren beide Seiten von der Sichtbarkeit. Schick uns dafür einfach:
+Bei Fragen melden Sie sich jederzeit.
 
-- den Link, unter dem du verlinkt werden möchtest
-- ein Logo (idealerweise als PNG mit transparentem Hintergrund oder SVG)
-
-**Gastbeitrag für deinen Blog:**
-
-Gerne erstellen wir zusätzlich einen Gastbeitrag für deinen Blog – z. B. zum Thema Restnutzungsdauer und AfA-Optimierung. Sag einfach Bescheid, wenn Interesse besteht, dann stimmen wir Thema und Umfang mit dir ab.
-
-Bei Fragen melde dich jederzeit.
-
-Liebe Grüße
+Freundliche Grüße
 Jasper
 gutachten-nutzungsdauer.com
 @endcomponent

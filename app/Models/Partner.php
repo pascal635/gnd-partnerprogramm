@@ -45,6 +45,18 @@ class Partner extends Model
         return $name !== '' ? $name : (string) ($this->contact_person ?: $this->company_name);
     }
 
+    /** Formal salutation line for e-mails, e.g. "Guten Tag Herr Müller". */
+    public function formalGreeting(): string
+    {
+        $name = trim(implode(' ', array_filter([$this->salutation, $this->last_name])));
+
+        if ($name === '' && filled($this->first_name)) {
+            $name = $this->first_name;
+        }
+
+        return 'Guten Tag'.($name !== '' ? ' '.$name : '');
+    }
+
     /** @return HasMany<User, $this> */
     public function users(): HasMany
     {
