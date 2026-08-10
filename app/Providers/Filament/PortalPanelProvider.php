@@ -28,6 +28,10 @@ class PortalPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->brandName('GND Partnerportal')
+            // Zwei verlinkte Logos oben links; Dark-Mode aus (farbige Logos auf hell).
+            ->brandLogo(fn () => view('filament.portal.brand-logo'))
+            ->brandLogoHeight('2rem')
+            ->darkMode(false)
             ->colors([
                 // GND-CI: gedämpftes Salbeigrün (#50624c) als Markenfarbe.
                 'primary' => Color::hex('#50624c'),
