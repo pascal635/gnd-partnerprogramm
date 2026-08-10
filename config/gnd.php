@@ -37,4 +37,9 @@ return [
         'email' => env('ADMIN_EMAIL'),
         'password' => env('ADMIN_PASSWORD'),
     ],
+
+    // Monatsreports.
+    'reports' => [
+        'accounting_email' => env('REPORTS_ACCOUNTING_EMAIL', 'info@gutachten-nutzungsdauer.com'),
+    ],
 ];

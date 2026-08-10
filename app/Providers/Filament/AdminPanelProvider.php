@@ -7,6 +7,7 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use App\Filament\Pages\Dashboard;
+use App\Http\Middleware\SendDueMonthlyReports;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -28,6 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->passwordReset()
             ->colors([
                 // GND-CI: gedämpftes Salbeigrün (#50624c) als Markenfarbe.
                 'primary' => Color::hex('#50624c'),
@@ -52,6 +54,8 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                // Cron-Ersatz: prüft/versendet fällige Monatsreports (in terminate()).
+                SendDueMonthlyReports::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
