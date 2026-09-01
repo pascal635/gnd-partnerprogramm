@@ -11,7 +11,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Shared-Hosting ohne Queue-Worker: ALLE Jobs/Notifications synchron
+        // ausführen – sonst bleiben z. B. Filaments (queued) Passwort-vergessen-
+        // und E-Mail-Notifications ungesendet in der jobs-Tabelle liegen.
+        config(['queue.default' => 'sync']);
     }
 
     /**
