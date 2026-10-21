@@ -3,6 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
+use App\Rules\CommissionRate;
+use App\Services\Commission\CommissionCalculator;
 use App\Support\Secrets;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -38,6 +40,7 @@ class Integrations extends Page
                     'wp_lead_secret' => Secrets::wpLeadSecret(),
                     'conversion_secret' => Secrets::conversionSecret(),
                     'pipedrive_lead_id_field' => Secrets::pipedriveLeadIdField(),
+                    'recruiter_default' => CommissionCalculator::recruiterDefault(),
                 ])
                 ->schema([
                     TextInput::make('wp_voucher_endpoint')
@@ -62,6 +65,11 @@ class Integrations extends Page
                     TextInput::make('pipedrive_lead_id_field')
                         ->label('Pipedrive-Feldname für die Lead-ID')
                         ->helperText('Nur informativ / für die Anleitung.'),
+                    TextInput::make('recruiter_default')
+                        ->label('Standard-Werber-Provision')
+                        ->helperText('Gilt für Subpartner ohne eigenen Satz: Prozent vom Auftragswert (z. B. „5%") oder Fixbetrag je Auftrag (z. B. „50").')
+                        ->required()
+                        ->rule(new CommissionRate),
                 ])
                 ->action(function (array $data): void {
                     foreach ([
@@ -73,6 +81,8 @@ class Integrations extends Page
                     ] as $key => $value) {
                         Setting::put($key, $value !== '' ? $value : null);
                     }
+
+                    Setting::put(CommissionCalculator::RECRUITER_DEFAULT_KEY, trim((string) $data['recruiter_default']));
 
                     Notification::make()->title('Einstellungen gespeichert')->success()->send();
                 }),

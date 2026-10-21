@@ -4,6 +4,7 @@ namespace App\Services\Reporting;
 
 use App\Enums\CommissionKind;
 use App\Enums\CommissionStatus;
+use App\Enums\CommissionTier;
 use App\Models\Commission;
 use App\Models\Conversion;
 use App\Models\Lead;
@@ -28,17 +29,16 @@ class CommissionReport
     /** @return array<int, array<string, mixed>> */
     public function detailRows(): array
     {
+        // One row per commission (direct + recruiter); orders without any
+        // commission still get one row so accounting sees every order.
         return Conversion::query()
             ->whereBetween('converted_at', [$this->from, $this->until])
-            ->with(['lead.partner', 'lead.voucherCode', 'commission'])
+            ->with(['lead.partner', 'lead.voucherCode', 'commissions.partner', 'commissions.sourcePartner'])
             ->orderBy('converted_at')
             ->get()
-            ->map(function (Conversion $c): array {
+            ->flatMap(function (Conversion $c): array {
                 $lead = $c->lead;
-                $commission = $c->commission;
-
-                return [
-                    'partner' => $lead?->partner?->company_name ?? '(nicht zugeordnet)',
+                $base = [
                     'lead_id' => $lead?->external_lead_id ?: ($lead?->referenceId() ?? ''),
                     'kunde' => $lead?->customer_name ?? '',
                     'email' => $lead?->customer_email ?? '',
@@ -46,10 +46,31 @@ class CommissionReport
                     'submitted_at' => $lead?->submitted_at,
                     'converted_at' => $c->converted_at,
                     'deal_value' => $c->deal_value,
-                    'kind' => $commission?->commission_kind,
-                    'amount' => $commission?->amount,
-                    'status' => $commission?->status,
                 ];
+
+                $commissions = $c->commissions->sortBy(fn (Commission $m) => $m->tier === CommissionTier::Direct ? 0 : 1);
+
+                if ($commissions->isEmpty()) {
+                    return [[
+                        ...$base,
+                        'partner' => $lead?->partner?->company_name ?? '(nicht zugeordnet)',
+                        'tier' => null,
+                        'source' => '',
+                        'kind' => null,
+                        'amount' => null,
+                        'status' => null,
+                    ]];
+                }
+
+                return $commissions->map(fn (Commission $m): array => [
+                    ...$base,
+                    'partner' => $m->partner?->company_name ?? $lead?->partner?->company_name ?? '(nicht zugeordnet)',
+                    'tier' => $m->tier,
+                    'source' => $m->sourcePartner?->company_name ?? '',
+                    'kind' => $m->commission_kind,
+                    'amount' => $m->amount,
+                    'status' => $m->status,
+                ])->values()->all();
             })
             ->all();
     }
@@ -68,24 +89,37 @@ class CommissionReport
             ->whereHas('lead', fn (Builder $q) => $q->where('partner_id', $partnerId))
             ->count();
 
-        $provision = (float) Commission::query()
+        $commissions = Commission::query()
             ->where('partner_id', $partnerId)
             ->where('status', '!=', CommissionStatus::Cancelled->value)
-            ->whereHas('conversion', fn (Builder $q) => $q->whereBetween('converted_at', [$this->from, $this->until]))
-            ->sum('amount');
+            ->whereHas('conversion', fn (Builder $q) => $q->whereBetween('converted_at', [$this->from, $this->until]));
 
-        return compact('ersteinschaetzungen', 'beauftragungen', 'provision');
+        // Total includes the recruiter provision earned from subpartners.
+        $provision = (float) (clone $commissions)->sum('amount');
+        $recruiter_provision = (float) (clone $commissions)->where('tier', CommissionTier::Recruiter->value)->sum('amount');
+
+        return compact('ersteinschaetzungen', 'beauftragungen', 'provision', 'recruiter_provision');
     }
 
-    /** @return array<int, array<string, mixed>> Partner mit >= 1 Beauftragung im Zeitraum. */
+    /** @return array<int, array<string, mixed>> Partner mit Beauftragung oder Provision im Zeitraum. */
     public function partnerSummaryRows(): array
     {
-        $partnerIds = Conversion::query()
+        $withOrders = Conversion::query()
             ->whereBetween('conversions.converted_at', [$this->from, $this->until])
             ->join('leads', 'conversions.lead_id', '=', 'leads.id')
             ->whereNotNull('leads.partner_id')
             ->distinct()
             ->pluck('leads.partner_id');
+
+        // Recruiters may earn without own orders.
+        $withProvision = Commission::query()
+            ->whereNotNull('partner_id')
+            ->where('status', '!=', CommissionStatus::Cancelled->value)
+            ->whereHas('conversion', fn (Builder $q) => $q->whereBetween('converted_at', [$this->from, $this->until]))
+            ->distinct()
+            ->pluck('partner_id');
+
+        $partnerIds = $withOrders->merge($withProvision)->unique();
 
         return Partner::query()
             ->whereIn('id', $partnerIds)
@@ -101,6 +135,7 @@ class CommissionReport
                     'ersteinschaetzungen' => $f['ersteinschaetzungen'],
                     'beauftragungen' => $f['beauftragungen'],
                     'provision' => $f['provision'],
+                    'recruiter_provision' => $f['recruiter_provision'],
                 ];
             })
             ->all();
@@ -108,10 +143,12 @@ class CommissionReport
 
     public function detailCsv(): string
     {
-        $header = ['Partner', 'Lead-ID', 'Kunde', 'Kunde E-Mail', 'Gutscheincode', 'Ersteinschätzung am', 'Beauftragt am', 'Deal-Wert', 'Provisionsart', 'Provision', 'Status'];
+        $header = ['Partner', 'Art', 'aus Partner', 'Lead-ID', 'Kunde', 'Kunde E-Mail', 'Gutscheincode', 'Ersteinschätzung am', 'Beauftragt am', 'Deal-Wert', 'Provisionsart', 'Provision', 'Status'];
 
         $rows = array_map(fn (array $r): array => [
             $r['partner'],
+            $r['tier'] instanceof CommissionTier ? $r['tier']->getLabel() : '—',
+            $r['source'],
             $r['lead_id'],
             $r['kunde'],
             $r['email'],
@@ -129,7 +166,7 @@ class CommissionReport
 
     public function summaryCsv(): string
     {
-        $header = ['Partner', 'Ansprechpartner', 'E-Mail', 'Ersteinschätzungen', 'Beauftragungen', 'Provision gesamt'];
+        $header = ['Partner', 'Ansprechpartner', 'E-Mail', 'Ersteinschätzungen', 'Beauftragungen', 'Provision gesamt', 'davon Werber-Provision'];
         $data = $this->partnerSummaryRows();
 
         $rows = array_map(fn (array $r): array => [
@@ -139,6 +176,7 @@ class CommissionReport
             (string) $r['ersteinschaetzungen'],
             (string) $r['beauftragungen'],
             $this->money($r['provision']),
+            $this->money($r['recruiter_provision']),
         ], $data);
 
         // Gesamt-Zeile.
@@ -149,6 +187,7 @@ class CommissionReport
             (string) array_sum(array_column($data, 'ersteinschaetzungen')),
             (string) array_sum(array_column($data, 'beauftragungen')),
             $this->money((float) array_sum(array_column($data, 'provision'))),
+            $this->money((float) array_sum(array_column($data, 'recruiter_provision'))),
         ];
 
         return $this->csv($header, $rows);

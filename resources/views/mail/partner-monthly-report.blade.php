@@ -9,6 +9,9 @@ hier Ihr Partner-Report für **{{ $monthLabel }}**:
 | Ersteinschätzungen | {{ $ersteinschaetzungen }} |
 | Davon beauftragt | {{ $beauftragungen }} |
 | Provision gesamt | {{ $provision }} |
+@if ($recruiterProvision)
+| davon aus geworbenen Partnern | {{ $recruiterProvision }} |
+@endif
 @endcomponent
 
 Die Details sehen Sie jederzeit in Ihrem Portal: [partner.gutachten-nutzungsdauer.com](https://partner.gutachten-nutzungsdauer.com/)

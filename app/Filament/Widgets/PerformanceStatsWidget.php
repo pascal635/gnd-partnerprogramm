@@ -37,10 +37,14 @@ class PerformanceStatsWidget extends StatsOverviewWidget
         // Provisionsvolumen: Summe der verdienten Provisionen (stornierte
         // ausgenommen). Bewusst OHNE Auszahlungsstatus – das Portal zeigt nur
         // das Volumen, nicht ob freigegeben/ausbezahlt wurde.
-        $provision = (float) Commission::query()
+        $commissions = Commission::query()
             ->when($partnerId, fn (Builder $q) => $q->where('partner_id', $partnerId))
             ->where('status', '!=', \App\Enums\CommissionStatus::Cancelled->value)
-            ->whereHas('conversion', fn (Builder $c) => $c->whereBetween('converted_at', [$from, $until]))
+            ->whereHas('conversion', fn (Builder $c) => $c->whereBetween('converted_at', [$from, $until]));
+
+        $provision = (float) (clone $commissions)->sum('amount');
+        $recruiterProvision = (float) (clone $commissions)
+            ->where('tier', \App\Enums\CommissionTier::Recruiter->value)
             ->sum('amount');
 
         $isPartner = auth()->user()?->isPartner() ?? false;
@@ -64,7 +68,9 @@ class PerformanceStatsWidget extends StatsOverviewWidget
         }
 
         $stats[] = Stat::make('Provisionsvolumen', Number::currency($provision, 'EUR', 'de'))
-            ->description('im Zeitraum verdient')
+            ->description($recruiterProvision > 0
+                ? 'davon '.Number::currency($recruiterProvision, 'EUR', 'de').' aus geworbenen Partnern'
+                : 'im Zeitraum verdient')
             ->color('warning');
 
         return $stats;

@@ -79,6 +79,7 @@ class MonthlyReportSender
                     (int) $f['ersteinschaetzungen'],
                     (int) $f['beauftragungen'],
                     (float) $f['provision'],
+                    (float) $f['recruiter_provision'],
                 ));
             });
 

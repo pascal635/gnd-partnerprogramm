@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Commissions\Tables;
 
 use App\Enums\CommissionStatus;
+use App\Enums\CommissionTier;
 use App\Models\Commission;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -29,6 +30,13 @@ class CommissionsTable
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
+                TextColumn::make('tier')
+                    ->label('Art')
+                    ->badge(),
+                TextColumn::make('sourcePartner.company_name')
+                    ->label('aus Partner')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('lead.external_lead_id')
                     ->label('Referenz')
                     ->placeholder('—')
@@ -65,6 +73,9 @@ class CommissionsTable
                 SelectFilter::make('status')
                     ->label('Auszahlungsstatus')
                     ->options(CommissionStatus::class),
+                SelectFilter::make('tier')
+                    ->label('Art')
+                    ->options(CommissionTier::class),
                 SelectFilter::make('partner')
                     ->label('Partner')
                     ->relationship('partner', 'company_name')

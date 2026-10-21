@@ -29,11 +29,10 @@ class ManualAttribution
         private readonly CustomerResolver $customers,
     ) {}
 
+    /** Locked once any of its commissions (direct or recruiter) is approved/paid. */
     public function isLocked(Conversion $conversion): bool
     {
-        $commission = $conversion->commission;
-
-        return $commission !== null && CommissionCalculator::isLocked($commission);
+        return $conversion->commissions()->get()->contains(fn ($c) => CommissionCalculator::isLocked($c));
     }
 
     public function assign(Conversion $conversion, Partner $partner, ?VoucherCode $voucher, bool $reassignCustomer): Conversion

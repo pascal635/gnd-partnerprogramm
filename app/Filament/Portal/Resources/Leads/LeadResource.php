@@ -37,7 +37,7 @@ class LeadResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('partner_id', auth()->user()?->partner_id)
-            ->with('conversion.commission');
+            ->with('conversions.commission');
     }
 
     public static function table(Table $table): Table

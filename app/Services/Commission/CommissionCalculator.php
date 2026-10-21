@@ -5,19 +5,33 @@ namespace App\Services\Commission;
 use App\Enums\CommissionCalcStatus;
 use App\Enums\CommissionKind;
 use App\Enums\CommissionStatus;
+use App\Enums\CommissionTier;
+use App\Enums\PartnerStatus;
 use App\Models\Commission;
 use App\Models\Conversion;
+use App\Models\Lead;
+use App\Models\Setting;
 use App\Support\CommissionParser;
 
 class CommissionCalculator
 {
+    /** Global fallback when a recruited partner has no own recruiter rate. */
+    public const RECRUITER_DEFAULT_KEY = 'commission.recruiter_default';
+
+    public const RECRUITER_DEFAULT = '5%';
+
+    public static function recruiterDefault(): string
+    {
+        return Setting::get(self::RECRUITER_DEFAULT_KEY) ?: self::RECRUITER_DEFAULT;
+    }
+
     /**
-     * Create or update the commission for a conversion.
-     *
-     * Terms are read from the lead's snapshot first (voucher_commission_raw),
-     * falling back to the linked voucher code. fix => flat amount; percent =>
-     * deal_value × rate (pending_input if deal_value missing). Already
-     * approved/paid commissions are locked and never recomputed.
+     * Create or update the commissions for a conversion:
+     *  - direct: the lead's partner, terms from the lead snapshot (or its code);
+     *  - recruiter: the partner who recruited the lead's partner (one level).
+     * fix => flat amount; percent => deal_value × rate (pending_input if
+     * deal_value is missing). Approved/paid commissions are locked.
+     * Returns the direct commission.
      */
     public function syncForConversion(Conversion $conversion): ?Commission
     {
@@ -27,10 +41,24 @@ class CommissionCalculator
             return null;
         }
 
-        $existing = Commission::where('conversion_id', $conversion->id)->first();
+        $direct = $this->syncDirect($conversion, $lead);
+        $this->syncRecruiter($conversion, $lead);
+
+        return $direct;
+    }
+
+    /** Approved/paid commissions are final and never recomputed or moved. */
+    public static function isLocked(Commission $commission): bool
+    {
+        return in_array($commission->status, [CommissionStatus::Approved, CommissionStatus::Paid], true);
+    }
+
+    private function syncDirect(Conversion $conversion, Lead $lead): ?Commission
+    {
+        $existing = $this->existing($conversion, CommissionTier::Direct);
 
         if ($existing && self::isLocked($existing)) {
-            return $existing; // locked
+            return $existing;
         }
 
         [$kind, $rate] = $this->resolveTerms($lead);
@@ -43,6 +71,50 @@ class CommissionCalculator
             return null;
         }
 
+        return $this->store($conversion, CommissionTier::Direct, $kind, $rate, [
+            'lead_id' => $lead->id,
+            'partner_id' => $lead->partner_id,
+            'source_partner_id' => null,
+            'voucher_code_id' => $lead->voucher_code_id,
+        ]);
+    }
+
+    private function syncRecruiter(Conversion $conversion, Lead $lead): ?Commission
+    {
+        $existing = $this->existing($conversion, CommissionTier::Recruiter);
+
+        if ($existing && self::isLocked($existing)) {
+            return $existing;
+        }
+
+        $source = $lead->partner;
+        $recruiter = $source?->recruiter;
+
+        if (! $recruiter || $recruiter->is($source) || $recruiter->status !== PartnerStatus::Active) {
+            $existing?->delete(); // relationship removed or recruiter inactive
+
+            return null;
+        }
+
+        $parsed = CommissionParser::parse($source->recruiter_commission_raw ?: self::recruiterDefault());
+
+        if ($parsed['kind'] === CommissionKind::None) {
+            $existing?->delete();
+
+            return null;
+        }
+
+        return $this->store($conversion, CommissionTier::Recruiter, $parsed['kind'], $parsed['value'], [
+            'lead_id' => $lead->id,
+            'partner_id' => $recruiter->id,
+            'source_partner_id' => $source->id,
+            'voucher_code_id' => null,
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $attributes */
+    private function store(Conversion $conversion, CommissionTier $tier, CommissionKind $kind, float $rate, array $attributes): Commission
+    {
         $dealValue = $conversion->deal_value !== null ? (float) $conversion->deal_value : null;
 
         $base = null;
@@ -51,21 +123,17 @@ class CommissionCalculator
 
         if ($kind === CommissionKind::Fix) {
             $amount = $rate;
-        } else { // percent
-            if ($dealValue === null) {
-                $calcStatus = CommissionCalcStatus::PendingInput;
-            } else {
-                $base = $dealValue;
-                $amount = round($dealValue * $rate / 100, 2);
-            }
+        } elseif ($dealValue === null) {
+            $calcStatus = CommissionCalcStatus::PendingInput;
+        } else {
+            $base = $dealValue;
+            $amount = round($dealValue * $rate / 100, 2);
         }
 
         return Commission::updateOrCreate(
-            ['conversion_id' => $conversion->id],
+            ['conversion_id' => $conversion->id, 'tier' => $tier->value],
             [
-                'lead_id' => $lead->id,
-                'partner_id' => $lead->partner_id,
-                'voucher_code_id' => $lead->voucher_code_id,
+                ...$attributes,
                 'commission_kind' => $kind,
                 'commission_rate' => $rate,
                 'base_amount' => $base,
@@ -76,16 +144,15 @@ class CommissionCalculator
         );
     }
 
-    /** Approved/paid commissions are final and never recomputed or moved. */
-    public static function isLocked(Commission $commission): bool
+    private function existing(Conversion $conversion, CommissionTier $tier): ?Commission
     {
-        return in_array($commission->status, [CommissionStatus::Approved, CommissionStatus::Paid], true);
+        return Commission::where('conversion_id', $conversion->id)->where('tier', $tier->value)->first();
     }
 
     /**
      * @return array{0: CommissionKind, 1: float|null}
      */
-    private function resolveTerms($lead): array
+    private function resolveTerms(Lead $lead): array
     {
         // 1) Snapshot captured at lead time.
         $parsed = CommissionParser::parse($lead->voucher_commission_raw);

@@ -4,6 +4,10 @@ namespace App\Filament\Resources\Partners\Schemas;
 
 use App\Enums\PartnerStatus;
 use App\Enums\PartnerType;
+use App\Models\Partner;
+use App\Rules\CommissionRate;
+use App\Services\Commission\CommissionCalculator;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -38,6 +42,32 @@ class PartnerForm
                             ->options(PartnerStatus::class)
                             ->default(PartnerStatus::Active->value)
                             ->required(),
+                    ]),
+
+                Section::make('Geworben von')
+                    ->description('Wurde dieser Partner von einem anderen Partner geworben, erhält der Werber zusätzlich eine Provision auf die Aufträge dieses Partners.')
+                    ->columns(2)
+                    ->collapsible()
+                    ->schema([
+                        Select::make('recruited_by_partner_id')
+                            ->label('Geworben von (Werber)')
+                            ->options(fn (?Partner $record): array => Partner::query()
+                                ->when($record, fn (Builder $q) => $q
+                                    ->whereKeyNot($record->getKey())
+                                    ->where(fn (Builder $w) => $w
+                                        ->whereNull('recruited_by_partner_id')
+                                        ->orWhere('recruited_by_partner_id', '!=', $record->getKey())))
+                                ->orderBy('company_name')
+                                ->pluck('company_name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->placeholder('— niemand —'),
+                        TextInput::make('recruiter_commission_raw')
+                            ->label('Werber-Provision')
+                            ->placeholder(fn (): string => 'Standard: '.CommissionCalculator::recruiterDefault())
+                            ->maxLength(50)
+                            ->rule(new CommissionRate)
+                            ->helperText('Prozent vom Auftragswert (z. B. „5%") oder Fixbetrag je Auftrag (z. B. „50"). Leer = Standard.'),
                     ]),
 
                 Section::make('Ansprechpartner & Login')

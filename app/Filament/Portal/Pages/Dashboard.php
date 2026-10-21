@@ -2,6 +2,7 @@
 
 namespace App\Filament\Portal\Pages;
 
+use App\Filament\Portal\Widgets\RecruiterCommissionsWidget;
 use App\Filament\Widgets\PerformanceChartWidget;
 use App\Filament\Widgets\PerformanceStatsWidget;
 use Filament\Forms\Components\DatePicker;
@@ -42,6 +43,7 @@ class Dashboard extends BaseDashboard
         return [
             PerformanceStatsWidget::class,
             PerformanceChartWidget::class,
+            RecruiterCommissionsWidget::class,
         ];
     }
 

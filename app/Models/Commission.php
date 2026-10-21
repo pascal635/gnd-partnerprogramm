@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\CommissionCalcStatus;
 use App\Enums\CommissionKind;
 use App\Enums\CommissionStatus;
+use App\Enums\CommissionTier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,6 +16,7 @@ class Commission extends Model
     protected function casts(): array
     {
         return [
+            'tier' => CommissionTier::class,
             'commission_kind' => CommissionKind::class,
             'calc_status' => CommissionCalcStatus::class,
             'status' => CommissionStatus::class,
@@ -42,6 +44,16 @@ class Commission extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    /**
+     * Recruiter tier only: the recruited partner whose order generated this.
+     *
+     * @return BelongsTo<Partner, $this>
+     */
+    public function sourcePartner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class, 'source_partner_id');
     }
 
     /** @return BelongsTo<VoucherCode, $this> */

@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\CommissionTier;
 use App\Enums\ConversionStatus;
 use App\Enums\MatchConfidence;
 use App\Enums\MatchedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Conversion extends Model
@@ -37,9 +39,29 @@ class Conversion extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    /** @return HasOne<Commission, $this> */
+    /**
+     * The direct commission (partner who brought the customer).
+     *
+     * @return HasOne<Commission, $this>
+     */
     public function commission(): HasOne
     {
-        return $this->hasOne(Commission::class);
+        return $this->hasOne(Commission::class)->where('tier', CommissionTier::Direct->value);
+    }
+
+    /** @return HasOne<Commission, $this> */
+    public function recruiterCommission(): HasOne
+    {
+        return $this->hasOne(Commission::class)->where('tier', CommissionTier::Recruiter->value);
+    }
+
+    /**
+     * All commissions of this order (direct + recruiter).
+     *
+     * @return HasMany<Commission, $this>
+     */
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(Commission::class);
     }
 }

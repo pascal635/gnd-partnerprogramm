@@ -34,6 +34,10 @@ class PartnersTable
                 TextColumn::make('partner_type')
                     ->label('Typ')
                     ->badge(),
+                TextColumn::make('recruiter.company_name')
+                    ->label('Geworben von')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('contact_person')
                     ->label('Ansprechpartner')
                     ->state(fn (Partner $record): string => $record->displayName())

@@ -21,6 +21,7 @@ class PartnerMonthlyReportMail extends Mailable
         public int $ersteinschaetzungen,
         public int $beauftragungen,
         public float $provision,
+        public float $recruiterProvision = 0.0,
     ) {}
 
     public function envelope(): Envelope
@@ -40,6 +41,9 @@ class PartnerMonthlyReportMail extends Mailable
                 'ersteinschaetzungen' => $this->ersteinschaetzungen,
                 'beauftragungen' => $this->beauftragungen,
                 'provision' => Number::currency($this->provision, 'EUR', 'de'),
+                'recruiterProvision' => $this->recruiterProvision > 0
+                    ? Number::currency($this->recruiterProvision, 'EUR', 'de')
+                    : null,
             ],
         );
     }

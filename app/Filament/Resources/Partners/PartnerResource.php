@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Partners;
 use App\Filament\Resources\Partners\Pages\CreatePartner;
 use App\Filament\Resources\Partners\Pages\EditPartner;
 use App\Filament\Resources\Partners\Pages\ListPartners;
+use App\Filament\Resources\Partners\RelationManagers\RecruitsRelationManager;
+use App\Enums\CommissionStatus;
 use App\Filament\Resources\Partners\Schemas\PartnerForm;
 use App\Filament\Resources\Partners\Tables\PartnersTable;
 use App\Enums\LeadStatus;
@@ -53,13 +55,16 @@ class PartnerResource extends Resource
                 'leads' => fn (Builder $query) => $query->assessments(),
                 'leads as converted_leads_count' => fn (Builder $query) => $query->where('status', LeadStatus::Converted->value),
             ])
-            ->withSum('commissions as provision_total', 'amount');
+            // Direct + recruiter provisions, cancelled ones excluded.
+            ->withSum(['commissions as provision_total' => fn (Builder $query) => $query
+                ->where('status', '!=', CommissionStatus::Cancelled->value)], 'amount')
+            ->with('recruiter');
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            RecruitsRelationManager::class,
         ];
     }
 
