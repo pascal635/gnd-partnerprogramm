@@ -49,7 +49,8 @@ class PartnerResource extends Resource
     {
         return parent::getEloquentQuery()
             ->withCount([
-                'leads',
+                // Ersteinschätzungen only (no repeat / manually entered orders).
+                'leads' => fn (Builder $query) => $query->assessments(),
                 'leads as converted_leads_count' => fn (Builder $query) => $query->where('status', LeadStatus::Converted->value),
             ])
             ->withSum('commissions as provision_total', 'amount');

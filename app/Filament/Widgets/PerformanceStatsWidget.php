@@ -24,6 +24,7 @@ class PerformanceStatsWidget extends StatsOverviewWidget
         $partnerId = $this->scopePartnerId();
 
         $ersteinschaetzungen = Lead::query()
+            ->assessments()
             ->when($partnerId, fn (Builder $q) => $q->where('partner_id', $partnerId))
             ->whereBetween('submitted_at', [$from, $until])
             ->count();

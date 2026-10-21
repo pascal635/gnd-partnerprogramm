@@ -27,16 +27,20 @@ class CommissionCalculator
             return null;
         }
 
+        $existing = Commission::where('conversion_id', $conversion->id)->first();
+
+        if ($existing && self::isLocked($existing)) {
+            return $existing; // locked
+        }
+
         [$kind, $rate] = $this->resolveTerms($lead);
 
         if ($kind === CommissionKind::None || $rate === null) {
-            return null; // this code carries no partner provision
-        }
+            // No provision under the current terms (e.g. re-assigned to a
+            // partner without terms): drop a stale, still-open commission.
+            $existing?->delete();
 
-        $existing = Commission::where('conversion_id', $conversion->id)->first();
-
-        if ($existing && in_array($existing->status, [CommissionStatus::Approved, CommissionStatus::Paid], true)) {
-            return $existing; // locked
+            return null;
         }
 
         $dealValue = $conversion->deal_value !== null ? (float) $conversion->deal_value : null;
@@ -70,6 +74,12 @@ class CommissionCalculator
                 'calc_status' => $calcStatus,
             ],
         );
+    }
+
+    /** Approved/paid commissions are final and never recomputed or moved. */
+    public static function isLocked(Commission $commission): bool
+    {
+        return in_array($commission->status, [CommissionStatus::Approved, CommissionStatus::Paid], true);
     }
 
     /**

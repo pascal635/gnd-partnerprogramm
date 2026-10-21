@@ -24,7 +24,7 @@ class CommissionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Provisionen';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     // Commissions are system-generated (from conversions), never created by hand.
     public static function canCreate(): bool

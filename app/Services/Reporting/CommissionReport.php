@@ -58,6 +58,7 @@ class CommissionReport
     public function figuresFor(int $partnerId): array
     {
         $ersteinschaetzungen = Lead::query()
+            ->assessments()
             ->where('partner_id', $partnerId)
             ->whereBetween('submitted_at', [$this->from, $this->until])
             ->count();

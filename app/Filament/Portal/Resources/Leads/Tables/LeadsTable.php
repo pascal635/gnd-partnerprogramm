@@ -2,6 +2,7 @@
 
 namespace App\Filament\Portal\Resources\Leads\Tables;
 
+use App\Enums\LeadSource;
 use App\Enums\LeadStatus;
 use App\Models\Lead;
 use Filament\Tables\Columns\TextColumn;
@@ -31,6 +32,19 @@ class LeadsTable
                     ->label('Objektart')
                     ->placeholder('—')
                     ->toggleable(),
+                TextColumn::make('source')
+                    ->label('Art')
+                    ->badge()
+                    ->formatStateUsing(fn (?LeadSource $state): string => match ($state) {
+                        LeadSource::Repeat => 'Folgeauftrag',
+                        LeadSource::Manual => 'Nachgetragen',
+                        default => 'Ersteinschätzung',
+                    })
+                    ->color(fn (?LeadSource $state): string => match ($state) {
+                        LeadSource::Repeat => 'success',
+                        LeadSource::Manual => 'warning',
+                        default => 'gray',
+                    }),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge(),

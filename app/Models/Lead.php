@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\AttributedVia;
 use App\Enums\LeadSource;
 use App\Enums\LeadStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,10 +20,24 @@ class Lead extends Model
         return [
             'status' => LeadStatus::class,
             'source' => LeadSource::class,
+            'attributed_via' => AttributedVia::class,
             'is_stub' => 'boolean',
             'submitted_at' => 'datetime',
             'raw_payload' => 'array',
         ];
+    }
+
+    /**
+     * Only real assessments (Ersteinschätzungen) — excludes repeat orders and
+     * manually entered orders that never went through the form.
+     *
+     * @param  Builder<Lead>  $query
+     */
+    public function scopeAssessments(Builder $query): void
+    {
+        $query->where(fn (Builder $q) => $q
+            ->whereNull('source')
+            ->orWhereNotIn('source', LeadSource::nonAssessment()));
     }
 
     /**
@@ -42,6 +58,12 @@ class Lead extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    /** @return BelongsTo<Customer, $this> */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     /** @return HasMany<Conversion, $this> */

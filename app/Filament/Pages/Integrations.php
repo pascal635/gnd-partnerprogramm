@@ -101,6 +101,7 @@ class Integrations extends Page
             'event' => 'deal.beauftragt',
             'lead_id' => 'GND-2026-000123',
             'deal_id' => 'pd_98765',
+            'person_id' => 4711,
             'deal_value' => 890.00,
             'currency' => 'EUR',
             'voucher_code' => 'PARTNER10',
@@ -118,7 +119,8 @@ class Integrations extends Page
         ], $pretty);
 
         $zapierSnippet = <<<'JS'
-// Zapier-Schritt "Code by Zapier" (JavaScript) – erzeugt Body + HMAC-Signatur
+// Zapier-Schritt "Code by Zapier" (JavaScript) – signiert UND sendet den Request,
+// damit der signierte Body 1:1 ankommt (kein separater Webhooks-Schritt nötig).
 const crypto = require('crypto');
 const SECRET = 'HIER_CONVERSION_SECRET_EINSETZEN';
 const ts = Math.floor(Date.now() / 1000).toString();
@@ -126,14 +128,26 @@ const body = JSON.stringify({
   event: 'deal.beauftragt',
   lead_id: inputData.lead_id,
   deal_id: inputData.deal_id,
+  person_id: inputData.person_id, // Pipedrive-Person: erkennt Folgeaufträge von Bestandskunden
   deal_value: Number(inputData.deal_value),
   currency: 'EUR',
   voucher_code: inputData.voucher_code,
   converted_at: inputData.converted_at,
 });
-const sig = crypto.createHmac('sha256', SECRET).update(ts + '.' + body).digest('hex');
-output = { ts: ts, body: body, signature: 'sha256=' + sig };
+const sig = 'sha256=' + crypto.createHmac('sha256', SECRET).update(ts + '.' + body).digest('hex');
+const res = await fetch('CONVERSION_URL', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-GND-Signature': sig,
+    'X-GND-Timestamp': ts,
+    'Idempotency-Key': 'conversion:' + inputData.deal_id,
+  },
+  body: body,
+});
+output = { http_status: res.status, response: await res.text() };
 JS;
+        $zapierSnippet = str_replace('CONVERSION_URL', url('/api/webhooks/conversion'), $zapierSnippet);
 
         return [
             'leadUrl' => url('/api/webhooks/wp/lead'),

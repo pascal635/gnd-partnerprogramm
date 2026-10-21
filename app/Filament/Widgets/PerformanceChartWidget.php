@@ -67,6 +67,7 @@ class PerformanceChartWidget extends ChartWidget
                 ->selectRaw('DATE(conversions.converted_at) as d, SUM(commissions.amount) as c')
                 ->groupBy('d')->pluck('c', 'd'),
             default => Lead::query()
+                ->assessments()
                 ->when($partnerId, fn (Builder $q) => $q->where('partner_id', $partnerId))
                 ->whereBetween('submitted_at', [$from, $until])
                 ->selectRaw('DATE(submitted_at) as d, COUNT(*) as c')

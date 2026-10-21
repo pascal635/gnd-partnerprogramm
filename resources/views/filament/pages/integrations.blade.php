@@ -97,8 +97,8 @@
             <ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
                 <li><strong>Trigger:</strong> Pipedrive → <em>Updated Deal</em>.</li>
                 <li><strong>Filter:</strong> nur fortfahren wenn <em>Stage = beauftragt</em> UND vorherige Stage ≠ beauftragt UND <em>{{ $pipedriveField }}</em> gefüllt.</li>
-                <li><strong>Code by Zapier (JavaScript):</strong> erzeugt Body + Signatur (Snippet unten, Secret einsetzen).</li>
-                <li><strong>Webhooks by Zapier → POST</strong> an den Conversion-Endpoint; Body = <code>output.body</code> (raw), Header <code>X-GND-Timestamp = output.ts</code>, <code>X-GND-Signature = output.signature</code>.</li>
+                <li><strong>Code by Zapier (JavaScript):</strong> erzeugt Body + Signatur <em>und sendet</em> den Request selbst (Snippet unten, Secret einsetzen). Input-Felder: <code>lead_id</code>, <code>deal_id</code>, <code>person_id</code>, <code>deal_value</code>, <code>voucher_code</code>, <code>converted_at</code>.</li>
+                <li>Ein separater „Webhooks by Zapier"-Schritt ist nicht nötig – so bleibt der signierte Body garantiert unverändert.</li>
                 <li><strong>Testen</strong> und im <em>Webhook-Protokoll</em> prüfen.</li>
             </ol>
 
@@ -119,6 +119,7 @@
                     <tbody class="text-gray-700 dark:text-gray-300">
                         <tr><td class="py-1 pr-4">{{ $pipedriveField }} (Custom Field)</td><td><code>lead_id</code></td></tr>
                         <tr><td class="py-1 pr-4">Deal-ID</td><td><code>deal_id</code></td></tr>
+                        <tr><td class="py-1 pr-4">Person-ID (Kontakt des Deals)</td><td><code>person_id</code> <span class="text-gray-500">– erkennt Folgeaufträge von Bestandskunden</span></td></tr>
                         <tr><td class="py-1 pr-4">Deal-Wert (netto)</td><td><code>deal_value</code></td></tr>
                         <tr><td class="py-1 pr-4">Gutscheincode</td><td><code>voucher_code</code></td></tr>
                         <tr><td class="py-1 pr-4">Beauftragt-Zeitpunkt</td><td><code>converted_at</code></td></tr>
@@ -170,7 +171,8 @@
                         <div class="{{ $label }}">Pipedrive</div>
                         <ul class="mt-1 list-disc space-y-1 pl-5">
                             <li>Custom-Deal-Feld <strong>„{{ $pipedriveField }}"</strong> anlegen und beim Anlegen des Deals mit der WP-<code>lead_id</code> füllen.</li>
-                            <li>Ohne diese durchgereichte ID landet eine Conversion in der Prüf-Warteschlange.</li>
+                            <li>Ohne diese durchgereichte ID landet eine Conversion in der Prüf-Warteschlange – außer die <code>person_id</code> gehört zu einem bekannten Bestandskunden (dann Folgeauftrag für dessen Partner).</li>
+                            <li>Nicht zuordenbare Aufträge lassen sich unter <strong>Partnerverwaltung → Aufträge</strong> nachträglich einem Partner zuweisen.</li>
                         </ul>
                     </div>
                 </div>
