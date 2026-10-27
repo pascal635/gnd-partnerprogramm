@@ -8,6 +8,7 @@ use App\Filament\Resources\Conversions\Schemas\AttributionFields;
 use App\Models\Conversion;
 use App\Models\Partner;
 use App\Models\VoucherCode;
+use App\Services\Attribution\LateCodeAttribution;
 use App\Services\Attribution\ManualAttribution;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -46,6 +47,18 @@ class ConversionsTable
                     ->label('Partner')
                     ->weight('bold')
                     ->placeholder('nicht zugeordnet'),
+                TextColumn::make('lead.voucher_code_raw')
+                    ->label('Eingegebener Code')
+                    ->description(function (Conversion $record): ?string {
+                        $pipedrive = LateCodeAttribution::normalize(data_get($record->raw_payload, 'voucher_code'));
+
+                        return $pipedrive && $pipedrive !== LateCodeAttribution::normalize($record->lead?->voucher_code_raw)
+                            ? "Pipedrive: {$pipedrive}"
+                            : null;
+                    })
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('lead.attributed_via')
                     ->label('Zuordnung')
                     ->badge()

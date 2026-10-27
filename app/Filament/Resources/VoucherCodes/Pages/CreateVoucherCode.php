@@ -5,6 +5,7 @@ namespace App\Filament\Resources\VoucherCodes\Pages;
 use App\Enums\SyncStatus;
 use App\Filament\Resources\VoucherCodes\Schemas\VoucherCodeForm;
 use App\Filament\Resources\VoucherCodes\VoucherCodeResource;
+use App\Services\Attribution\LateCodeAttribution;
 use App\Services\Voucher\VoucherProvisioning;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -28,5 +29,7 @@ class CreateVoucherCode extends CreateRecord
         foreach (app(VoucherProvisioning::class)->afterCreate($this->record) as $warning) {
             Notification::make()->title($warning['title'])->body($warning['body'])->warning()->send();
         }
+
+        LateCodeAttribution::notifyBackfilled(app(LateCodeAttribution::class)->backfill($this->record));
     }
 }

@@ -141,7 +141,7 @@ const body = JSON.stringify({
   person_id: inputData.person_id, // Pipedrive-Person: erkennt Folgeaufträge von Bestandskunden
   deal_value: Number(inputData.deal_value),
   currency: 'EUR',
-  voucher_code: inputData.voucher_code,
+  voucher_code: inputData.voucher_code, // Code-Feld aus Pipedrive: ordnet Aufträge ohne Partner nachträglich zu
   converted_at: inputData.converted_at,
 });
 const sig = 'sha256=' + crypto.createHmac('sha256', SECRET).update(ts + '.' + body).digest('hex');

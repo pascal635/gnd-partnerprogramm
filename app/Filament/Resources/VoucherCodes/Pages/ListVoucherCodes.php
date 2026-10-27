@@ -6,6 +6,7 @@ use App\Enums\SyncStatus;
 use App\Filament\Resources\VoucherCodes\VoucherCodeResource;
 use App\Jobs\SyncVoucherToWordPress;
 use App\Models\VoucherCode;
+use App\Services\Attribution\LateCodeAttribution;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
@@ -54,6 +55,18 @@ class ListVoucherCodes extends ListRecords
                     }
 
                     $notification->send();
+                }),
+            Action::make('backfillLeads')
+                ->label('Anfragen ohne Partner zuordnen')
+                ->icon(Heroicon::OutlinedLink)
+                ->color('gray')
+                ->requiresConfirmation()
+                ->modalHeading('Anfragen nachträglich zuordnen')
+                ->modalDescription('Anfragen ohne Partner, bei denen ein Code eingegeben wurde, der inzwischen angelegt ist, werden dem Partner dieses Codes zugeordnet. Provisionen werden dabei berechnet. Bereits zugeordnete Anfragen bleiben unverändert.')
+                ->action(function (): void {
+                    $count = app(LateCodeAttribution::class)->backfillAll();
+
+                    LateCodeAttribution::notifyBackfilled($count, always: true);
                 }),
             CreateAction::make(),
         ];

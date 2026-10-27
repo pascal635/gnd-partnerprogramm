@@ -13,6 +13,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\VoucherCode;
 use App\Services\Attribution\CustomerResolver;
+use App\Services\Attribution\LateCodeAttribution;
 
 /**
  * Deterministic lead ↔ conversion matching. Highest confidence first:
@@ -120,8 +121,6 @@ class LeadConversionMatcher
 
     private function resolveVoucher(Conversion $conversion): ?VoucherCode
     {
-        $code = data_get($conversion->raw_payload, 'voucher_code');
-
-        return filled($code) ? VoucherCode::where('code', $code)->first() : null;
+        return LateCodeAttribution::findVoucher(data_get($conversion->raw_payload, 'voucher_code'));
     }
 }

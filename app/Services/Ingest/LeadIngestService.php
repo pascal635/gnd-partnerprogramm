@@ -10,8 +10,8 @@ use App\Enums\MatchConfidence;
 use App\Enums\MatchedBy;
 use App\Models\Customer;
 use App\Models\Lead;
-use App\Models\VoucherCode;
 use App\Services\Attribution\CustomerResolver;
+use App\Services\Attribution\LateCodeAttribution;
 use App\Services\Commission\CommissionCalculator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -31,9 +31,7 @@ class LeadIngestService
         $leadId = (string) ($payload['lead_id'] ?? '');
         $email = data_get($payload, 'customer.email');
 
-        $voucher = filled($payload['voucher_code'] ?? null)
-            ? VoucherCode::where('code', $payload['voucher_code'])->first()
-            : null;
+        $voucher = LateCodeAttribution::findVoucher($payload['voucher_code'] ?? null);
 
         $attributes = [
             'voucher_code_id' => $voucher?->id,
@@ -131,6 +129,20 @@ class LeadIngestService
 
         if ($customer?->partner_id) {
             return array_merge($attributes, $this->customers->attributionFor($customer));
+        }
+
+        // A stub already attributed via a late (Pipedrive) code keeps it when
+        // the form lead arrives without one.
+        if ($lead?->partner_id && ! $attributes['partner_id']) {
+            unset(
+                $attributes['partner_id'],
+                $attributes['voucher_code_id'],
+                $attributes['voucher_partner_raw'],
+                $attributes['voucher_commission_raw'],
+            );
+            $attributes['voucher_code_raw'] ??= $lead->voucher_code_raw;
+
+            return $attributes;
         }
 
         $attributes['attributed_via'] = $attributes['partner_id'] ? AttributedVia::Voucher : null;

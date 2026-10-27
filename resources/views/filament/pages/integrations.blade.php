@@ -121,7 +121,7 @@
                         <tr><td class="py-1 pr-4">Deal-ID</td><td><code>deal_id</code></td></tr>
                         <tr><td class="py-1 pr-4">Person-ID (Kontakt des Deals)</td><td><code>person_id</code> <span class="text-gray-500">– erkennt Folgeaufträge von Bestandskunden</span></td></tr>
                         <tr><td class="py-1 pr-4">Deal-Wert (netto)</td><td><code>deal_value</code></td></tr>
-                        <tr><td class="py-1 pr-4">Gutscheincode</td><td><code>voucher_code</code></td></tr>
+                        <tr><td class="py-1 pr-4">Gutscheincode (auch nachgetragen)</td><td><code>voucher_code</code> <span class="text-gray-500">– ordnet Aufträge ohne Partner nachträglich zu; ein bereits zugeordneter Partner bleibt</span></td></tr>
                         <tr><td class="py-1 pr-4">Beauftragt-Zeitpunkt</td><td><code>converted_at</code></td></tr>
                     </tbody>
                 </table>

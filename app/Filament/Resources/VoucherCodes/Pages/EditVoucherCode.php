@@ -6,6 +6,7 @@ use App\Enums\SyncStatus;
 use App\Filament\Resources\VoucherCodes\Schemas\VoucherCodeForm;
 use App\Filament\Resources\VoucherCodes\VoucherCodeResource;
 use App\Jobs\SyncVoucherToWordPress;
+use App\Services\Attribution\LateCodeAttribution;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -36,6 +37,9 @@ class EditVoucherCode extends EditRecord
 
     protected function afterSave(): void
     {
+        // A corrected code picks up earlier leads that carried it.
+        LateCodeAttribution::notifyBackfilled(app(LateCodeAttribution::class)->backfill($this->record));
+
         // Direkt (synchron) an WordPress – kein Cron nötig.
         try {
             SyncVoucherToWordPress::dispatchSync($this->record);

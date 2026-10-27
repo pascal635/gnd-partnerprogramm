@@ -6,6 +6,7 @@ use App\Enums\LeadStatus;
 use App\Enums\MatchedBy;
 use App\Models\Conversion;
 use App\Services\Attribution\CustomerResolver;
+use App\Services\Attribution\LateCodeAttribution;
 use App\Services\Commission\CommissionCalculator;
 use App\Services\Matching\LeadConversionMatcher;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,7 @@ class ConversionIngestService
     public function __construct(
         private readonly LeadConversionMatcher $matcher,
         private readonly CommissionCalculator $calculator,
+        private readonly LateCodeAttribution $lateCodes,
     ) {}
 
     /**
@@ -61,6 +63,9 @@ class ConversionIngestService
             if ($lead->status !== LeadStatus::Converted) {
                 $lead->update(['status' => LeadStatus::Converted]);
             }
+
+            // Code entered afterwards in Pipedrive: only fills a missing partner.
+            $this->lateCodes->attribute($lead, $payload['voucher_code'] ?? null);
 
             // Compute commission (percent needs deal_value; else pending_input).
             $this->calculator->syncForConversion($conversion->refresh()->load('lead'));

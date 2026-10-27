@@ -10,6 +10,7 @@ use App\Models\Commission;
 use App\Models\Conversion;
 use App\Models\Partner;
 use App\Models\VoucherCode;
+use App\Services\Attribution\LateCodeAttribution;
 use App\Services\Commission\CommissionCalculator;
 use App\Services\Voucher\VoucherProvisioning;
 use App\Support\PartnerInvitation;
@@ -89,6 +90,7 @@ class RecruitOnboarding
 
         if ($voucher) {
             $warnings = [...$warnings, ...$this->vouchers->afterCreate($voucher)];
+            app(LateCodeAttribution::class)->backfill($voucher);
         }
 
         return ['partner' => $partner, 'warnings' => $warnings];
